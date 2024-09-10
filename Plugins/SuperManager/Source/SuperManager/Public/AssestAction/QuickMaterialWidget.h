@@ -8,6 +8,16 @@
 #include "QuickMaterialWidget.generated.h"
 
 
+UENUM(BlueprintType)
+enum class E_ChannelPackingType : uint8
+{
+	ECPT_NoChannelPacking UMETA(DisplayName = "No Channel Packing"),
+
+	ECPT_ORM UMETA(DisplayName = "OcclusionRoughnessMetallic"),
+
+	ECPT_MAX UMETA (DisplayName = "DefaultMax")
+};
+
 /**
  * 
  */
@@ -17,10 +27,17 @@ class SUPERMANAGER_API UQuickMaterialWidget : public UEditorUtilityWidget
 	GENERATED_BODY()
 	
 public: 
-#pragma region QuickMaterialCreationCore
+#pragma region QuickMaterialCreation
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CreateMaterialFromSelectedTextures")
+	E_ChannelPackingType ChannelPackingType = E_ChannelPackingType::ECPT_NoChannelPacking;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CreateMaterialFromSelectedTextures")
 	bool bCustomMaterialName = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CreateMaterialFromSelectedTextures")
+	bool bCreateMaterialInstance = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CreateMaterialFromSelectedTextures",meta = (EditCondition = "bCustomMaterialName"))
 	FString MaterialName = TEXT("M_");
@@ -73,11 +90,18 @@ public:
 		TEXT("_AO")
 	};
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Supported Texture Names")
+	TArray<FString> ORMArray = {
+		TEXT("_arm"),
+		TEXT("_OcclusionRoughnessMetallic"),
+		TEXT("_ORM")
+	};
+
 #pragma endregion
 
 private:
 
-#pragma region QuickMaterialCreation
+#pragma region QuickMaterialCreationCore
 
 	bool ProcessSelectedData(const TArray<FAssetData>& SelectedDataToProcess, TArray<UTexture2D*>& OutSelectedTexturesArray, FString& OutSelectedTexturePackagePath);
 
@@ -86,15 +110,28 @@ private:
 	UMaterial* CreateMaterialAsset(const FString& NameOfTheMaterial, const FString& PathToPutMaterial);
 
 	void Default_CreateMaterialNodes(UMaterial* CreatedMaterial, UTexture2D* SelectedTexture, uint32& PinsConnectedCounter);
+
+	void ORM_CreateMaterialNodes(UMaterial* CreatedMaterial, UTexture2D* SelectedTexture, uint32& PinsConnectedCounter);
+
 #pragma endregion
 
 
-#pragma region CreateMaterialNodes
+#pragma region CreateMaterialNodesConnectedPins
 
 	bool TryConnectBaseColor(UMaterialExpressionTextureSample* TextureSampleNode, UTexture2D* SelectedTexture, UMaterial* CreatedMaterial);
 
+	bool TryConnectMetallic(UMaterialExpressionTextureSample* TextureSampleNode, UTexture2D* SelectedTexture, UMaterial* CreatedMaterial);
+
+	bool TryConnectRoughness(UMaterialExpressionTextureSample* TextureSampleNode, UTexture2D* SelectedTexture, UMaterial* CreatedMaterial);
+
+	bool TryConnectNormal(UMaterialExpressionTextureSample* TextureSampleNode, UTexture2D* SelectedTexture, UMaterial* CreatedMaterial);
+
+	bool TryConnectAO(UMaterialExpressionTextureSample* TextureSampleNode, UTexture2D* SelectedTexture, UMaterial* CreatedMaterial);
+
+	bool TryConnectORM(UMaterialExpressionTextureSample* TextureSampleNode, UTexture2D* SelectedTexture, UMaterial* CreatedMaterial);
+
 #pragma endregion
 
-
+	class UMaterialInstanceConstant* CreateMaterialInstanceAsset(UMaterial* CreatedMaterial,FString NameOfMaterialInstance,const FString& PathToPutMI);
 
 };
