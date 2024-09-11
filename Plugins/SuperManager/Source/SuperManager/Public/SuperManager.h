@@ -65,6 +65,22 @@ private:
 #pragma endregion
 
 
+#pragma region SelectionLock
+
+	void InitCustomSelectionEvent();
+
+	void OnActorSelected(UObject* SelectedObject);
+
+	void LockActorSelection(AActor* ActorToProcess);
+	void UnlockActorSelection(AActor* ActorToProcess);
+	bool CheckIsActorSelectionLocked(AActor* ActorToProcess);
+
+#pragma endregion
+
+	TWeakObjectPtr<class UEditorActorSubsystem> WeakEditorActorSubsystem;
+
+	bool GetEditorActorSubsystem();
+
 public:
 #pragma region ProccessDataForAdvanceDeletionTab
 
