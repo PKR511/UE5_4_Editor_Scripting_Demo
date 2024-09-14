@@ -13,6 +13,9 @@
 #include "LevelEditor.h"
 #include "Engine/Selection.h"
 #include "Subsystems/EditorActorSubsystem.h"
+#include "CustomUICommands/SuperManagerUICommands.h"
+#include "SceneOutlinerModule.h"
+#include "CustomOutlinerColumn/OutlinerSelectionColumn.h"
 
 
 #define LOCTEXT_NAMESPACE "FSuperManagerModule"
@@ -22,9 +25,15 @@ void FSuperManagerModule::StartupModule()
 	FSuperManagerStyle::InitializeIcons();
 	InitCBMenuExtention();
 	RegisterAdvanceDeletionTab();
+
+	FSuperManagerUICommands::Register();
+	InitCustomUICommands();
+
 	InitLevelEditorExtention();
 
 	InitCustomSelectionEvent();
+
+	InitSceneOutlinerColumnExtension();
 
 }//StartupModule.
 
@@ -35,6 +44,9 @@ void FSuperManagerModule::ShutdownModule()
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(FName("AdvanceDeletion"));
 
 	FSuperManagerStyle::ShutDown();
+	FSuperManagerUICommands::Unregister();
+
+	UnRegisterSceneOutlinerColumnExtension();
 }
 
 
@@ -117,6 +129,12 @@ void FSuperManagerModule::AddCBMenuEntry(FMenuBuilder& MenuBuilder)
 
 void FSuperManagerModule::OnDeleteUnusedAssetButtonClicked()
 {
+	if (ConstructedDockTab.IsValid())
+	{
+		DebugHeader::ShowMsgDialog(EAppMsgType::Ok, TEXT("Please close advance deletion tab before this operation"));
+		return;
+	}
+
 
 	if (FolderPathsSelected.Num() > 1)
 	{
@@ -178,6 +196,12 @@ void FSuperManagerModule::OnDeleteUnusedAssetButtonClicked()
 
 void FSuperManagerModule::OnDeleteEmptyFolderButtonClicked()
 {
+	if (ConstructedDockTab.IsValid())
+	{
+		DebugHeader::ShowMsgDialog(EAppMsgType::Ok, TEXT("Please close advance deletion tab before this operation"));
+		return;
+	}
+
 
 	if (FolderPathsSelected.Num() > 1)
 	{
@@ -329,7 +353,9 @@ void FSuperManagerModule::RegisterAdvanceDeletionTab()
 }
 TSharedRef<SDockTab> FSuperManagerModule::OnSpawnAdvanceDeletionTab(const FSpawnTabArgs& SpawnTab)
 {
-	return
+	if (FolderPathsSelected.Num() == 0) return SNew(SDockTab).TabRole(ETabRole::NomadTab);
+
+	ConstructedDockTab =
 		SNew(SDockTab).TabRole(ETabRole::NomadTab)
 		[
 			SNew(SAdvanceDeletionTab)
@@ -337,6 +363,12 @@ TSharedRef<SDockTab> FSuperManagerModule::OnSpawnAdvanceDeletionTab(const FSpawn
 				.CurrentSelectedFolder(FolderPathsSelected[0])
 
 		];
+
+	ConstructedDockTab->SetOnTabClosed(
+		SDockTab::FOnTabClosedCallback::CreateRaw(this, &FSuperManagerModule::OnAdvanceDeletionTabClosed));
+
+	return ConstructedDockTab.ToSharedRef();
+
 }//RegisterAdvanceDeletionTab.
 
 
@@ -369,6 +401,14 @@ TArray<TSharedPtr<FAssetData>> FSuperManagerModule::GetAllAssetDataUnderSelected
 
 }//GetAllAssetDataUnderSelectedFolder.
 
+void FSuperManagerModule::OnAdvanceDeletionTabClosed(TSharedRef<SDockTab> TabToClose)
+{
+	if (ConstructedDockTab.IsValid())
+	{
+		ConstructedDockTab.Reset();
+		FolderPathsSelected.Empty();
+	}
+}//OnAdvanceDeletionTabClosed.
 
 
 #pragma endregion
@@ -468,6 +508,9 @@ void FSuperManagerModule::InitLevelEditorExtention()
 	FLevelEditorModule& LevelEditorModule =
 		FModuleManager::LoadModuleChecked<FLevelEditorModule>(TEXT("LevelEditor"));
 
+	TSharedRef<FUICommandList> ExistingLevelCommands = LevelEditorModule.GetGlobalLevelEditorActions();
+	ExistingLevelCommands->Append(CustomUICommands.ToSharedRef());
+
 	TArray<FLevelEditorModule::FLevelViewportMenuExtender_SelectedActors>& LevelEditorMenuExtenders =
 		LevelEditorModule.GetAllLevelViewportContextMenuExtenders();
 
@@ -542,7 +585,7 @@ void FSuperManagerModule::OnLockActorSelectionButtonClicked()
 		CurrentLockedActorNames.Append(TEXT("\n"));
 		CurrentLockedActorNames.Append(SelectedActor->GetActorLabel());
 	}
-
+	RefreshSceneOutliner();
 	DebugHeader::ShowNotifyInfo(CurrentLockedActorNames);
 
 }//OnLockActorSelectionButtonClicked.
@@ -569,6 +612,7 @@ void FSuperManagerModule::OnUnlockActorSelectionButtonClicked()
 	if (AllLockedActors.Num() == 0)
 	{
 		DebugHeader::ShowNotifyInfo(TEXT("No selection locked actor currently"));
+		return;
 	}
 
 	FString UnlockedActorNames = TEXT("Lifted selection constraint for:");
@@ -580,7 +624,7 @@ void FSuperManagerModule::OnUnlockActorSelectionButtonClicked()
 		UnlockedActorNames.Append(TEXT("\n"));
 		UnlockedActorNames.Append(LockedActor->GetActorLabel());
 	}
-
+	RefreshSceneOutliner();
 	DebugHeader::ShowNotifyInfo(UnlockedActorNames);
 
 }//OnUnlockActorSelectionButtonClicked.
@@ -641,7 +685,108 @@ bool FSuperManagerModule::CheckIsActorSelectionLocked(AActor* ActorToProcess)
 	return ActorToProcess->ActorHasTag(FName("Locked"));
 }//CheckIsActorSelectionLocked.
 
+void FSuperManagerModule::RefreshSceneOutliner()
+{
+	FLevelEditorModule& LevelEditorModule =
+		FModuleManager::LoadModuleChecked<FLevelEditorModule>(TEXT("LevelEditor"));
+
+	TSharedPtr<ISceneOutliner> SceneOutliner = LevelEditorModule.GetFirstLevelEditor()->GetSceneOutliner();
+
+	if (SceneOutliner.IsValid())
+	{
+		SceneOutliner->FullRefresh();
+	}
+}//RefreshSceneOutliner.
+
 #pragma endregion
+
+#pragma region CustomEditorUICommands
+
+void FSuperManagerModule::InitCustomUICommands()
+{
+
+	CustomUICommands = MakeShareable(new FUICommandList());
+
+	CustomUICommands->MapAction(
+		FSuperManagerUICommands::Get().LockActorSelection,
+		FExecuteAction::CreateRaw(this, &FSuperManagerModule::OnSelectionLockHotKeyPressed)
+	);
+
+	CustomUICommands->MapAction(
+		FSuperManagerUICommands::Get().UnlockActorSelection,
+		FExecuteAction::CreateRaw(this, &FSuperManagerModule::OnUnlockActorSelectionHotKeyPressed)
+	);
+
+}//InitCustomUICommands.
+
+
+void FSuperManagerModule::OnSelectionLockHotKeyPressed()
+{
+	OnLockActorSelectionButtonClicked();
+}//OnSelectionLockHotKeyPressed.
+
+void FSuperManagerModule::OnUnlockActorSelectionHotKeyPressed()
+{
+	OnUnlockActorSelectionButtonClicked();
+}//OnUnlockActorSelectionHotKeyPressed.
+
+#pragma endregion
+
+
+#pragma region SceneOutlinerExtension
+
+void FSuperManagerModule::InitSceneOutlinerColumnExtension()
+{
+	FSceneOutlinerModule& SceneOutlinerModule =
+		FModuleManager::LoadModuleChecked<FSceneOutlinerModule>(TEXT("SceneOutliner"));
+
+	FSceneOutlinerColumnInfo SelectionLockColumnInfo(
+		ESceneOutlinerColumnVisibility::Visible,
+		1,
+		FCreateSceneOutlinerColumn::CreateRaw(this, &FSuperManagerModule::OnCreateSelectionLockColumn)
+	);
+
+	SceneOutlinerModule.RegisterDefaultColumnType<FOutlinerSelectionLockColumn>(SelectionLockColumnInfo);
+}
+
+TSharedRef<ISceneOutlinerColumn> FSuperManagerModule::OnCreateSelectionLockColumn(ISceneOutliner& SceneOutliner)
+{
+	return MakeShareable(new FOutlinerSelectionLockColumn(SceneOutliner));
+}
+
+
+void FSuperManagerModule::UnRegisterSceneOutlinerColumnExtension()
+{
+	FSceneOutlinerModule& SceneOutlinerModule =
+		FModuleManager::LoadModuleChecked<FSceneOutlinerModule>(TEXT("SceneOutliner"));
+
+	SceneOutlinerModule.UnRegisterColumnType<FOutlinerSelectionLockColumn>();
+
+}//UnregisterSceneOutlinerColumnExtension
+
+
+#pragma endregion
+
+void FSuperManagerModule::ProcessLockingForOutliner(AActor* ActorToProcess, bool bShouldLock)
+{
+	if (!GetEditorActorSubsystem()) return;
+
+	if (bShouldLock)
+	{
+		LockActorSelection(ActorToProcess);
+
+		WeakEditorActorSubsystem->SetActorSelectionState(ActorToProcess, false);
+
+		DebugHeader::ShowNotifyInfo(TEXT("Locked selection for:\n") + ActorToProcess->GetActorLabel());
+	}
+	else
+	{
+		UnlockActorSelection(ActorToProcess);
+
+		DebugHeader::ShowNotifyInfo(TEXT("Removed selection lock for:\n") + ActorToProcess->GetActorLabel());
+	}
+}
+
 
 bool FSuperManagerModule::GetEditorActorSubsystem()
 {

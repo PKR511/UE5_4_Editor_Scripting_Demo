@@ -22,35 +22,35 @@ struct FRandomActorRotation
 	GENERATED_BODY()
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite , Category = "RandomActorRotation")
 	bool bRandomizeRotYaw = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bRandomizeRotYaw"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite,  Category = "RandomActorRotation",meta = (EditCondition = "bRandomizeRotYaw"))
 	float RotYawMin = -45.f;
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bRandomizeRotYaw"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RandomActorRotation", meta = (EditCondition = "bRandomizeRotYaw"))
 	float RotYawMax = 45.f;
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RandomActorRotation")
 	bool bRandomizeRotPitch = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bRandomizeRotPitch"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RandomActorRotation" , meta = (EditCondition = "bRandomizeRotPitch"))
 	float RotPitchMin = -45.f;
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bRandomizeRotPitch"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RandomActorRotation", meta = (EditCondition = "bRandomizeRotPitch"))
 	float RotPitchMax = 45.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RandomActorRotation")
 	bool bRandomizeRotRoll = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bRandomizeRotRoll"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RandomActorRotation", meta = (EditCondition = "bRandomizeRotRoll"))
 	float RotRollMin = -45.f;
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bRandomizeRotRoll"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RandomActorRotation" , meta = (EditCondition = "bRandomizeRotRoll"))
 	float RotRollMax = 45.f;
 };
 
@@ -69,7 +69,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ActorBatchSelection")
 	TEnumAsByte<ESearchCase::Type> SearchCase = ESearchCase::IgnoreCase;
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "ActorBatchSelection")
 	void SelectAllActorWithSimilarName();
 
 #pragma endregion
@@ -85,7 +85,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ActorBatchDuplication")
 	float OffsetDist = 300.f;
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "ActorBatchDuplication")
 	void DuplicateActors();
 
 
@@ -120,7 +120,7 @@ public:
 	float OffsetMax = 50.f;
 
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "RandomizeActorTransform")
 	void Randomize();
 
 

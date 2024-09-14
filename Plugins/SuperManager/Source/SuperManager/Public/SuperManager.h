@@ -39,12 +39,15 @@ private:
 
 #pragma region CustomEditorTab
 
+	TSharedPtr<SDockTab> ConstructedDockTab;
+
 	void RegisterAdvanceDeletionTab();
 
 	TSharedRef<SDockTab> OnSpawnAdvanceDeletionTab(const FSpawnTabArgs& SpawnTab);
 
 	TArray<TSharedPtr<FAssetData>> GetAllAssetDataUnderSelectedFolder();
 
+	void OnAdvanceDeletionTabClosed(TSharedRef<SDockTab> TabToClose);
 
 #pragma endregion
 
@@ -73,7 +76,28 @@ private:
 
 	void LockActorSelection(AActor* ActorToProcess);
 	void UnlockActorSelection(AActor* ActorToProcess);
-	bool CheckIsActorSelectionLocked(AActor* ActorToProcess);
+	void RefreshSceneOutliner();
+
+#pragma endregion
+
+#pragma region CustomEditorUICommands
+
+	TSharedPtr<class FUICommandList> CustomUICommands;
+
+	void InitCustomUICommands();
+
+	void OnSelectionLockHotKeyPressed();
+	void OnUnlockActorSelectionHotKeyPressed();
+
+#pragma endregion
+
+#pragma region SceneOutlinerExtension
+
+	void InitSceneOutlinerColumnExtension();
+
+	TSharedRef<class ISceneOutlinerColumn> OnCreateSelectionLockColumn(class ISceneOutliner& SceneOutliner);
+
+	void UnRegisterSceneOutlinerColumnExtension();
 
 #pragma endregion
 
@@ -95,4 +119,7 @@ public:
 	void SyncCBToClickedAssetForAssetList(const FString& AssetPathToSync);
 
 #pragma endregion
+
+	bool CheckIsActorSelectionLocked(AActor* ActorToProcess);
+	void ProcessLockingForOutliner(AActor* ActorToProcess, bool bShouldLock);
 };

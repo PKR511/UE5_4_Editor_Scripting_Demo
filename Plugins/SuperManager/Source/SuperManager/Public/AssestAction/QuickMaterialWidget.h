@@ -45,7 +45,7 @@ public:
 	
 	
 	
-	UFUNCTION(Blueprintcallable)
+	UFUNCTION(Blueprintcallable, Category = "CreateMaterialFromSelectedTextures")
 	void CreateMaterialFromSelectedTextures();
 
 
